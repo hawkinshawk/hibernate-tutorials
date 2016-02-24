@@ -35,7 +35,6 @@ import javax.persistence.TypedQuery;
 
 import org.hibernate.envers.AuditReader;
 import org.hibernate.envers.AuditReaderFactory;
-import org.hibernate.envers.query.AuditQuery;
 
 import junit.framework.TestCase;
 
@@ -65,55 +64,6 @@ public class EnversIllustrationTest extends TestCase {
 		entityManagerFactory.close();
 	}
 
-	public void testBasicUsage() {
-		// create a couple of events
-		EntityManager entityManager = entityManagerFactory.createEntityManager();
-		entityManager.getTransaction().begin();
-		entityManager.persist(new Event("Our very first event!", new Date()));
-		entityManager.persist(new Event("A follow up event", new Date()));
-		entityManager.getTransaction().commit();
-		entityManager.close();
-
-		// now lets pull events from the database and list them
-		entityManager = entityManagerFactory.createEntityManager();
-		entityManager.getTransaction().begin();
-		List<Event> result = entityManager.createQuery("from Event", Event.class).getResultList();
-		for (Event event : result) {
-			System.out.println("Event (" + event.getDate() + ") : " + event.getTitle());
-		}
-		entityManager.getTransaction().commit();
-		entityManager.close();
-
-		// so far the code is the same as we have seen in previous tutorials.
-		// Now lets leverage Envers...
-
-		// first lets create some revisions
-		entityManager = entityManagerFactory.createEntityManager();
-		entityManager.getTransaction().begin();
-		Event myEvent = entityManager.find(Event.class, 2L);
-		myEvent.setDate(new Date());
-		myEvent.setTitle(myEvent.getTitle() + " (rescheduled)");
-		entityManager.getTransaction().commit();
-		entityManager.close();
-
-		// and then use an AuditReader to look back through history
-		entityManager = entityManagerFactory.createEntityManager();
-		entityManager.getTransaction().begin();
-		myEvent = entityManager.find(Event.class, 2L);
-		assertEquals("A follow up event (rescheduled)", myEvent.getTitle());
-		AuditReader reader = AuditReaderFactory.get(entityManager);
-		Event firstRevision = reader.find(Event.class, 2L, 1);
-		System.out.println("First Revision (" + firstRevision.getDate() + ") : " + firstRevision.getTitle());
-		assertFalse(firstRevision.getTitle().equals(myEvent.getTitle()));
-		assertFalse(firstRevision.getDate().equals(myEvent.getDate()));
-		Event secondRevision = reader.find(Event.class, 2L, 2);
-		System.out.println("Second Revision (" + secondRevision.getDate() + ") : " + secondRevision.getTitle());
-		assertTrue(secondRevision.getTitle().equals(myEvent.getTitle()));
-		assertTrue(secondRevision.getDate().equals(myEvent.getDate()));
-		entityManager.getTransaction().commit();
-		entityManager.close();
-	}
-
 	private Date getDateFromString(String date) {
 		SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy");
 		Date result = null;
@@ -133,21 +83,17 @@ public class EnversIllustrationTest extends TestCase {
 		Berater senior1 = new Berater("Seniorberater1");
 		Berater senior2 = new Berater("Seniorberater2");
 		Berater hk = new Berater("Hauptkonto");
-		Hierarchie h1 = new Hierarchie(getDateFromString("01.02.2016"), getDateFromString("31.12.9999"), hk,
-				null);
+		Hierarchie h1 = new Hierarchie(getDateFromString("01.02.2016"), getDateFromString("31.12.9999"), hk, null);
 		hk.addHierarchie(h1);
-		Hierarchie h2 = new Hierarchie(getDateFromString("01.02.2016"), getDateFromString("31.12.9999"), senior1,
-				hk);
+		Hierarchie h2 = new Hierarchie(getDateFromString("01.02.2016"), getDateFromString("31.12.9999"), senior1, hk);
 		senior1.addHierarchie(h2);
-		
-    	Hierarchie h3 = new Hierarchie(getDateFromString("01.02.2016"), getDateFromString("31.12.9999"), junior,
+
+		Hierarchie h3 = new Hierarchie(getDateFromString("01.02.2016"), getDateFromString("31.12.9999"), junior,
 				senior1);
 		senior1.addHierarchie(h3);
-		
-		Hierarchie h4 = new Hierarchie(getDateFromString("01.02.2016"), getDateFromString("31.12.9999"), senior2,
-				hk);
-		senior2.addHierarchie(h4);
 
+		Hierarchie h4 = new Hierarchie(getDateFromString("01.02.2016"), getDateFromString("31.12.9999"), senior2, hk);
+		senior2.addHierarchie(h4);
 
 		entityManager.persist(hk);
 		entityManager.persist(senior1);
@@ -219,30 +165,32 @@ public class EnversIllustrationTest extends TestCase {
 		}
 
 		AuditReader reader = AuditReaderFactory.get(entityManager);
-    	hierarchieAlt = reader.find(Hierarchie.class, 5L, hierarchieAltDatum);
+		hierarchieAlt = reader.find(Hierarchie.class, 5L, hierarchieAltDatum);
 		System.out.println("Zustand der Hierarchie zum Datum: " + hierarchieAltDatum.toString() + "; " + hierarchieAlt);
 		hierarchieNeu = reader.find(Hierarchie.class, 5L, hierarchieNeuDatum);
 		System.out.println("Zustand der Hierarchie zum Datum: " + hierarchieNeuDatum.toString() + "; " + hierarchieNeu);
-	
-		Number revisionNumberForAltDatum= reader.getRevisionNumberForDate(hierarchieAltDatum);
+
+		Number revisionNumberForAltDatum = reader.getRevisionNumberForDate(hierarchieAltDatum);
 		System.out.println("Revision alt:" + revisionNumberForAltDatum.toString());
-		Number revisionNumberForNeuDatum= reader.getRevisionNumberForDate(hierarchieNeuDatum);
+		Number revisionNumberForNeuDatum = reader.getRevisionNumberForDate(hierarchieNeuDatum);
 		System.out.println("Revision neu:" + revisionNumberForNeuDatum.toString());
-		
-		List<Hierarchie> hierarchienAlt = reader.createQuery().forEntitiesAtRevision(Hierarchie.class, revisionNumberForAltDatum).getResultList();
-		
+
+		List<Hierarchie> hierarchienAlt = reader.createQuery()
+				.forEntitiesAtRevision(Hierarchie.class, revisionNumberForAltDatum).getResultList();
+
 		System.out.println("Hierarchien alt:");
 		for (Hierarchie hierarchie : hierarchienAlt) {
 			System.out.println(hierarchie.toString());
 		}
-		
-		List<Hierarchie> hierarchienNeu = reader.createQuery().forEntitiesAtRevision(Hierarchie.class, revisionNumberForNeuDatum).getResultList();
-		
+
+		List<Hierarchie> hierarchienNeu = reader.createQuery()
+				.forEntitiesAtRevision(Hierarchie.class, revisionNumberForNeuDatum).getResultList();
+
 		System.out.println("Hierarchien neu:");
 		for (Hierarchie hierarchie : hierarchienNeu) {
 			System.out.println(hierarchie.toString());
 		}
-		
+
 		// Berater firstRevisionBerater = reader.find(Berater.class, 4L, 5);
 		// System.out.println("Erste Version: " +
 		// firstRevisionBerater.toString());
