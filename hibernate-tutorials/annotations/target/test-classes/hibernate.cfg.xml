@@ -36,6 +36,8 @@
 
         <!-- Names the annotated entity class -->
         <mapping class="org.hibernate.tutorial.annotations.Event"/>
+        <mapping class="org.hibernate.tutorial.annotations.Vertrag"/>
+        <mapping class="org.hibernate.tutorial.annotations.Vertragsstatushistorie"/>
 
     </session-factory>
 

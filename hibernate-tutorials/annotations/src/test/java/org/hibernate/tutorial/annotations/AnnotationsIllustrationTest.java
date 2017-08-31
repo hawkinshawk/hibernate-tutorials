@@ -23,6 +23,8 @@
  */
 package org.hibernate.tutorial.annotations;
 
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -85,5 +87,61 @@ public class AnnotationsIllustrationTest extends TestCase {
 		}
         session.getTransaction().commit();
         session.close();
+	}
+
+	public void testVersionTag() {
+		// create a couple of vertraege...
+		Session session = sessionFactory.openSession();
+		session.beginTransaction();
+
+		final Vertragsstatushistorie antrag =
+				Vertragsstatushistorie.builder().vertragsstatus("Antrag").build();
+
+
+		final Vertrag vertrag1 =
+				Vertrag.builder().vertragsnummer("123").vertragsstatushistory(antrag).build();
+
+		antrag.setVertrag(vertrag1);
+
+		session.save( vertrag1 );
+		session.getTransaction().commit();
+		session.close();
+
+		// now lets pull events from the database and list them
+		session = sessionFactory.openSession();
+		session.beginTransaction();
+		List result = session.createQuery( "from Vertrag" ).list();
+		for ( Vertrag tmp : (List<Vertrag>) result ) {
+			System.out.println(tmp.toString());
+		}
+		session.getTransaction().commit();
+		session.close();
+
+
+        session = sessionFactory.openSession();
+        session.beginTransaction();
+        final Vertragsstatushistorie vertrag =
+                Vertragsstatushistorie.builder().vertragsstatus("Vertrag").build();
+
+        Vertrag loadedVertrag =
+                (Vertrag) session.createQuery( "from Vertrag where vertragsnummer = 123" ).uniqueResult();
+
+        loadedVertrag.getVertragsstatushistories().add(vertrag);
+        vertrag.setVertrag(loadedVertrag);
+        loadedVertrag.setVersion(Timestamp.valueOf(LocalDateTime.now()));
+        session.save( loadedVertrag );
+        session.getTransaction().commit();
+        session.close();
+
+        // now lets pull events from the database and list them
+        session = sessionFactory.openSession();
+        session.beginTransaction();
+        result = session.createQuery( "from Vertrag" ).list();
+        for ( Vertrag tmp : (List<Vertrag>) result ) {
+            System.out.println(tmp.toString());
+        }
+        session.getTransaction().commit();
+        session.close();
+
 	}
 }
