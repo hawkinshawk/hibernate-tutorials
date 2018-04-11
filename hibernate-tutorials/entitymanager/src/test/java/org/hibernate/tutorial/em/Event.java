@@ -40,15 +40,17 @@ public class Event {
 
 	private String title;
 	private Date date;
+    private Status status;
 
 	public Event() {
 		// this form used by Hibernate
 	}
 
-	public Event(String title, Date date) {
+	public Event(String title, Date date, Status status) {
 		// for application use, to create new events
 		this.title = title;
 		this.date = date;
+		this.status = status;
 	}
 
 	@Id
@@ -77,5 +79,13 @@ public class Event {
 
 	public void setTitle(String title) {
 		this.title = title;
+	}
+
+	public Status getStatus() {
+		return status;
+	}
+
+	public void setStatus(Status status) {
+		this.status = status;
 	}
 }
